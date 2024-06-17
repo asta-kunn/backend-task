@@ -4,13 +4,13 @@ import (
     "encoding/json"
     "fmt"
     "net/http"
+    "os"
     "time"
 )
 
 const (
-    baseURL    = "https://dummyapi.io/data/v1"
-    appID      = "YOUR_APP_ID"
-    userAgent  = "Mozilla/5.0"
+    baseURL          = "https://dummyapi.io/data/v1"
+    userAgent        = "Mozilla/5.0"
     httpClientTimeout = 10 * time.Second
 )
 
@@ -41,6 +41,8 @@ type PostResponse struct {
 var client = &http.Client{Timeout: httpClientTimeout}
 
 func ScrapeUsers(page int) ([]User, error) {
+    appID := os.Getenv("APP_ID")
+
     req, err := http.NewRequest("GET", fmt.Sprintf("%s/user?page=%d&limit=10", baseURL, page), nil)
     if err != nil {
         return nil, err
@@ -64,6 +66,8 @@ func ScrapeUsers(page int) ([]User, error) {
 }
 
 func ScrapePosts(page int) ([]Post, error) {
+    appID := os.Getenv("APP_ID")
+
     req, err := http.NewRequest("GET", fmt.Sprintf("%s/post?page=%d&limit=10", baseURL, page), nil)
     if err != nil {
         return nil, err
