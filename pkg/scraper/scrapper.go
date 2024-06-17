@@ -30,12 +30,22 @@ type Post struct {
     PublishDate string   `json:"publishDate"`
 }
 
+type Comment struct {
+    ID      string `json:"id"`
+    Message string `json:"message"`
+    User    User   `json:"owner"`
+}
+
 type Response struct {
     Data []User `json:"data"`
 }
 
 type PostResponse struct {
     Data []Post `json:"data"`
+}
+
+type CommentResponse struct {
+    Data []Comment `json:"data"`
 }
 
 var client = &http.Client{Timeout: httpClientTimeout}
@@ -82,6 +92,31 @@ func ScrapePosts(page int) ([]Post, error) {
     defer resp.Body.Close()
 
     var response PostResponse
+    err = json.NewDecoder(resp.Body).Decode(&response)
+    if err != nil {
+        return nil, err
+    }
+
+    return response.Data, nil
+}
+
+func ScrapeComments(page int) ([]Comment, error) {
+    appID := os.Getenv("APP_ID")
+
+    req, err := http.NewRequest("GET", fmt.Sprintf("%s/comment?page=%d&limit=10", baseURL, page), nil)
+    if err != nil {
+        return nil, err
+    }
+    req.Header.Set("app-id", appID)
+    req.Header.Set("User-Agent", userAgent)
+
+    resp, err := client.Do(req)
+    if err != nil {
+        return nil, err
+    }
+    defer resp.Body.Close()
+
+    var response CommentResponse
     err = json.NewDecoder(resp.Body).Decode(&response)
     if err != nil {
         return nil, err

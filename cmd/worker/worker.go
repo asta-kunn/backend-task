@@ -58,7 +58,7 @@ func scrapeData() {
     log.Println("Connected to Kafka, Redis, and Jaeger successfully")
 
     for i := 1; i <= 10; i++ {
-        wg.Add(2)
+        wg.Add(3)
         go func(page int) {
             defer wg.Done()
             span := tracer.StartSpan(fmt.Sprintf("Scraping Users Page %d", page))
@@ -98,6 +98,27 @@ func scrapeData() {
                     },
                 )
                 redisClient.Set(context.Background(), post.User.Email, post, 0)
+            }
+        }(i)
+
+        go func(page int) {
+            defer wg.Done()
+            span := tracer.StartSpan(fmt.Sprintf("Scraping Comments Page %d", page))
+            comments, err := scraper.ScrapeComments(page)
+            span.Finish()
+            if err != nil {
+                log.Printf("Error scraping comments on page %d: %v\n", page, err)
+                return
+            }
+            for _, comment := range comments {
+                log.Printf("Comment: %s by %s %s\n", comment.Message, comment.User.FirstName, comment.User.LastName)
+                kafkaWriter.WriteMessages(context.Background(),
+                    kafka.Message{
+                        Key:   []byte(comment.ID),
+                        Value: []byte(fmt.Sprintf("Comment: %s by %s %s", comment.Message, comment.User.FirstName, comment.User.LastName)),
+                    },
+                )
+                redisClient.Set(context.Background(), comment.ID, comment, 0)
             }
         }(i)
     }
