@@ -1,16 +1,18 @@
 package config
 
 import (
-	"io"
-	"log"
+    "context"
+    "io"
+    "log"
+    "time"
 
-	"github.com/go-redis/redis/v8"
-	"github.com/opentracing/opentracing-go"
-	"github.com/segmentio/kafka-go"
-	"github.com/spf13/viper"
-	"github.com/uber/jaeger-client-go"
-	"github.com/uber/jaeger-client-go/config"
-	"github.com/uber/jaeger-lib/metrics/prometheus"
+    "github.com/go-redis/redis/v8"
+    "github.com/opentracing/opentracing-go"
+    "github.com/segmentio/kafka-go"
+    "github.com/spf13/viper"
+    "github.com/uber/jaeger-client-go"
+    "github.com/uber/jaeger-client-go/config"
+    "github.com/uber/jaeger-lib/metrics/prometheus"
 )
 
 func InitConfig() {
@@ -63,4 +65,45 @@ func InitJaeger(serviceName string) (opentracing.Tracer, io.Closer) {
         log.Fatal("Could not initialize Jaeger tracer:", err)
     }
     return tracer, closer
+}
+
+func CheckKafkaConnection(broker string) error {
+    conn, err := kafka.Dial("tcp", broker)
+    if err != nil {
+        return err
+    }
+    defer conn.Close()
+    return nil
+}
+
+func CheckRedisConnection(addr string) error {
+    client := redis.NewClient(&redis.Options{
+        Addr: addr,
+    })
+    defer client.Close()
+    ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+    defer cancel()
+    return client.Ping(ctx).Err()
+}
+
+func CheckJaegerConnection(agentHost string) error {
+    cfg := config.Configuration{
+        ServiceName: "check-jaeger",
+        Sampler: &config.SamplerConfig{
+            Type:  "const",
+            Param: 1,
+        },
+        Reporter: &config.ReporterConfig{
+            LogSpans:           true,
+            LocalAgentHostPort: agentHost,
+        },
+    }
+    _, closer, err := cfg.NewTracer(
+        config.Logger(jaeger.StdLogger),
+    )
+    if err != nil {
+        return err
+    }
+    defer closer.Close()
+    return nil
 }
