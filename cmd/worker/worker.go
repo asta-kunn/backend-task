@@ -1,18 +1,18 @@
 package worker
 
 import (
-	"context"
-	"fmt"
-	"log"
-	"sync"
+    "context"
+    "fmt"
+    "log"
+    "sync"
 
-	"github.com/asta-kunn/backend-task/pkg/scraper"
-	"github.com/go-redis/redis/v8"
-	"github.com/segmentio/kafka-go"
-	"github.com/spf13/cobra"
-	"github.com/uber/jaeger-client-go"
-	"github.com/uber/jaeger-client-go/config"
-	"github.com/uber/jaeger-lib/metrics/prometheus"
+    "github.com/asta-kunn/backend-task/pkg/scraper"
+    "github.com/go-redis/redis/v8"
+    "github.com/segmentio/kafka-go"
+    "github.com/spf13/cobra"
+    "github.com/uber/jaeger-client-go"
+    "github.com/uber/jaeger-client-go/config"
+    "github.com/uber/jaeger-lib/metrics/prometheus"
 )
 
 var Cmd = &cobra.Command{
