@@ -4,23 +4,24 @@ import (
     "encoding/json"
     "fmt"
     "net/http"
-    "os"
     "sync"
     "time"
 
+    "github.com/asta-kunn/backend-task/config"
     "github.com/asta-kunn/backend-task/models"
 )
 
 const (
     baseURL          = "https://dummyapi.io/data/v1"
     userAgent        = "Mozilla/5.0"
-    httpClientTimeout = 10 * time.Second
+    httpClientTimeout = 30 * time.Second // Increased timeout
+    maxRetries       = 3                 // Number of retries
 )
 
 var client = &http.Client{Timeout: httpClientTimeout}
 
 func ScrapeUsers(page int) ([]models.User, error) {
-    appID := os.Getenv("APP_ID")
+    appID := config.GetAppID()
 
     req, err := http.NewRequest("GET", fmt.Sprintf("%s/user?page=%d&limit=10", baseURL, page), nil)
     if err != nil {
@@ -29,7 +30,7 @@ func ScrapeUsers(page int) ([]models.User, error) {
     req.Header.Set("app-id", appID)
     req.Header.Set("User-Agent", userAgent)
 
-    resp, err := client.Do(req)
+    resp, err := doRequestWithRetries(req, maxRetries)
     if err != nil {
         return nil, err
     }
@@ -69,7 +70,7 @@ func ScrapeUsers(page int) ([]models.User, error) {
 }
 
 func ScrapeUserDetails(userID string) (models.User, error) {
-    appID := os.Getenv("APP_ID")
+    appID := config.GetAppID()
 
     req, err := http.NewRequest("GET", fmt.Sprintf("%s/user/%s", baseURL, userID), nil)
     if err != nil {
@@ -78,7 +79,7 @@ func ScrapeUserDetails(userID string) (models.User, error) {
     req.Header.Set("app-id", appID)
     req.Header.Set("User-Agent", userAgent)
 
-    resp, err := client.Do(req)
+    resp, err := doRequestWithRetries(req, maxRetries)
     if err != nil {
         return models.User{}, err
     }
@@ -94,7 +95,7 @@ func ScrapeUserDetails(userID string) (models.User, error) {
 }
 
 func ScrapePosts(page int) ([]models.Post, error) {
-    appID := os.Getenv("APP_ID")
+    appID := config.GetAppID()
 
     req, err := http.NewRequest("GET", fmt.Sprintf("%s/post?page=%d&limit=10", baseURL, page), nil)
     if err != nil {
@@ -103,7 +104,7 @@ func ScrapePosts(page int) ([]models.Post, error) {
     req.Header.Set("app-id", appID)
     req.Header.Set("User-Agent", userAgent)
 
-    resp, err := client.Do(req)
+    resp, err := doRequestWithRetries(req, maxRetries)
     if err != nil {
         return nil, err
     }
@@ -119,7 +120,7 @@ func ScrapePosts(page int) ([]models.Post, error) {
 }
 
 func ScrapeComments(page int) ([]models.Comment, error) {
-    appID := os.Getenv("APP_ID")
+    appID := config.GetAppID()
 
     req, err := http.NewRequest("GET", fmt.Sprintf("%s/comment?page=%d&limit=10", baseURL, page), nil)
     if err != nil {
@@ -128,7 +129,7 @@ func ScrapeComments(page int) ([]models.Comment, error) {
     req.Header.Set("app-id", appID)
     req.Header.Set("User-Agent", userAgent)
 
-    resp, err := client.Do(req)
+    resp, err := doRequestWithRetries(req, maxRetries)
     if err != nil {
         return nil, err
     }
@@ -141,4 +142,18 @@ func ScrapeComments(page int) ([]models.Comment, error) {
     }
 
     return response.Data, nil
+}
+
+func doRequestWithRetries(req *http.Request, retries int) (*http.Response, error) {
+    var resp *http.Response
+    var err error
+    for i := 0; i < retries; i++ {
+        resp, err = client.Do(req)
+        if err == nil {
+            return resp, nil
+        }
+        fmt.Printf("Request failed, retrying (%d/%d): %v\n", i+1, retries, err)
+        time.Sleep(time.Second * 2) // Delay between retries
+    }
+    return nil, err
 }

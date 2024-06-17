@@ -1,18 +1,15 @@
 package worker
 
 import (
-    "context"
-    "fmt"
-    "log"
-    "sync"
+	"context"
+	"fmt"
+	"log"
+	"sync"
 
-    "github.com/asta-kunn/backend-task/pkg/scraper"
-    "github.com/go-redis/redis/v8"
-    "github.com/segmentio/kafka-go"
-    "github.com/spf13/cobra"
-    "github.com/uber/jaeger-client-go"
-    "github.com/uber/jaeger-client-go/config"
-    "github.com/uber/jaeger-lib/metrics/prometheus"
+	"github.com/asta-kunn/backend-task/config"
+	"github.com/asta-kunn/backend-task/pkg/scraper"
+	"github.com/segmentio/kafka-go"
+	"github.com/spf13/cobra"
 )
 
 var Cmd = &cobra.Command{
@@ -25,34 +22,13 @@ var Cmd = &cobra.Command{
 
 func scrapeData() {
     var wg sync.WaitGroup
-    redisClient := redis.NewClient(&redis.Options{
-        Addr: "localhost:6379",
-    })
-    kafkaWriter := kafka.Writer{
-        Addr:     kafka.TCP("localhost:9092"),
-        Topic:    "scraped-data",
-        Balancer: &kafka.LeastBytes{},
-    }
+    config.InitConfig()
+
+    redisClient := config.InitRedis()
+    kafkaWriter := config.InitKafkaWriter()
     defer kafkaWriter.Close()
 
-    cfg := config.Configuration{
-        ServiceName: "backend-task",
-        Sampler: &config.SamplerConfig{
-            Type:  "const",
-            Param: 1,
-        },
-        Reporter: &config.ReporterConfig{
-            LogSpans:           true,
-            LocalAgentHostPort: "127.0.0.1:6831",
-        },
-    }
-    tracer, closer, err := cfg.NewTracer(
-        config.Logger(jaeger.StdLogger),
-        config.Metrics(prometheus.New()),
-    )
-    if err != nil {
-        log.Fatal("Could not initialize Jaeger tracer:", err)
-    }
+    tracer, closer := config.InitJaeger("backend-task")
     defer closer.Close()
 
     log.Println("Connected to Kafka, Redis, and Jaeger successfully")
