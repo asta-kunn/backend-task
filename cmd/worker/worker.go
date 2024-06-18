@@ -45,14 +45,15 @@ func scrapeData() {
                 return
             }
             for _, user := range users {
-                log.Printf("User: %s %s %s %s %s\n", user.Title, user.FirstName, user.LastName, user.Email, user.Gender)
-                kafkaWriter.WriteMessages(context.Background(),
-                    kafka.Message{
-                        Key:   []byte(user.Email),
-                        Value: []byte(fmt.Sprintf("User: %s %s %s %s %s", user.Title, user.FirstName, user.LastName, user.Email, user.Gender)),
-                    },
-                )
-                redisClient.Set(context.Background(), user.Email, user, 0)
+                message := kafka.Message{
+                    Key:   []byte(user.Email),
+                    Value: []byte(fmt.Sprintf("User: %s %s %s %s %s", user.Title, user.FirstName, user.LastName, user.Email, user.Gender)),
+                }
+                if err := kafkaWriter.WriteMessages(context.Background(), message); err != nil {
+                    log.Printf("Failed to write user message to Kafka: %v", err)
+                } else {
+                    log.Printf("Successfully wrote user message to Kafka: %s", message.Value)
+                }
             }
         }(i)
 
