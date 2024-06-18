@@ -33,6 +33,7 @@ func consumeKafkaMessages() {
     }
 }
 
+
 func main() {
     err := godotenv.Load()
     if err != nil {
