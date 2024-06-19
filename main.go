@@ -15,11 +15,11 @@ import (
 
 func consumeKafkaMessages() {
     r := kafka.NewReader(kafka.ReaderConfig{
-        Brokers:   []string{"localhost:9092"}, // Ensure this matches your actual Kafka setup
+        Brokers:   []string{"localhost:9092"}, 
         Topic:     "scraped-data",
         Partition: 0,
-        MinBytes:  10e3, // 10KB
-        MaxBytes:  10e6, // 10MB
+        MinBytes:  10e3, 
+        MaxBytes:  10e6,
     })
     defer r.Close()
 
@@ -45,7 +45,6 @@ func main() {
     var rootCmd = &cobra.Command{Use: "app"}
     rootCmd.AddCommand(worker.Cmd)  // Add worker as a subcommand
 
-    // Optionally, you could add a command to start consuming Kafka messages directly
     kafkaCmd := &cobra.Command{
         Use:   "kafkaConsume",
         Short: "Consume messages from Kafka",
